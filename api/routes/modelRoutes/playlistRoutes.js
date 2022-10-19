@@ -1,5 +1,6 @@
 const Playlists = require("./../../models/playlistModel");
 const Users = require("./../../models/userModel");
+const mongoose = require("mongoose");
 
 module.exports = (app) => {
   app.get("/playlists/:id", (req, res) => {
@@ -10,12 +11,20 @@ module.exports = (app) => {
   });
 
   app.post("/playlists/delete", (req, res) => {
+    console.log(req.body.id);
     Playlists.deleteOne({ _id: req.body.id }, (e) => {
       if (e) console.log(e);
 
       Users.updateMany(
         {},
-        { $pull: { playlists: { type: "playlist", _id: mongoose.Types.ObjectId(req.body.id) } } },
+        {
+          $pull: {
+            playlists: {
+              type: "playlist",
+              _id: mongoose.Types.ObjectId(req.body.id),
+            },
+          },
+        },
         (e) => {
           if (e) console.log(e);
 
@@ -26,19 +35,28 @@ module.exports = (app) => {
   });
 
   app.post("/playlists/update", (req, res) => {
-    Playlists.updateOne({ _id: req.body.id }, { name: req.body.name, image: req.body.image }, (e) => {
-      if (e) console.log(e);
+    Playlists.updateOne(
+      { _id: req.body.id },
+      { name: req.body.name, image: req.body.image },
+      (e) => {
+        if (e) console.log(e);
 
-      Users.updateMany(
-        { "playlists._id": req.body.id, "playlists.type": "playlist" },
-        { $set: { "playlists.$.name": req.body.name, "playlists.$.image": req.body.image } },
-        (e) => {
-          if (e) console.log(e);
+        Users.updateMany(
+          { "playlists._id": req.body.id, "playlists.type": "playlist" },
+          {
+            $set: {
+              "playlists.$.name": req.body.name,
+              "playlists.$.image": req.body.image,
+            },
+          },
+          (e) => {
+            if (e) console.log(e);
 
-          res.json({ message: "Success", code: 200 });
-        }
-      );
-    });
+            res.json({ message: "Success", code: 200 });
+          }
+        );
+      }
+    );
   });
 
   app.post("/playlists/add-to", (req, res) => {
@@ -50,36 +68,44 @@ module.exports = (app) => {
         }
       }
 
-      Playlists.updateOne({ _id: req.body.id }, { $push: { songs: { ...req.body.song } } }, (e) => {
+      Playlists.updateOne(
+        { _id: req.body.id },
+        { $push: { songs: { ...req.body.song } } },
+        (e) => {
+          if (e) console.log(e);
+
+          Users.updateMany(
+            { "playlists._id": req.body.id, "playlists.type": "playlist" },
+            { $push: { "playlists.$.songs": { ...req.body.song } } },
+            (e) => {
+              if (e) console.log(e);
+
+              res.json({ message: "Success", code: 200 });
+            }
+          );
+        }
+      );
+    });
+  });
+
+  app.post("/playlists/delete-from", (req, res) => {
+    Playlists.updateOne(
+      { _id: req.body.id },
+      { $pull: { songs: { id: req.body.songID } } },
+      (e) => {
         if (e) console.log(e);
 
         Users.updateMany(
           { "playlists._id": req.body.id, "playlists.type": "playlist" },
-          { $push: { "playlists.$.songs": { ...req.body.song } } },
+          { $pull: { "playlists.$.songs": { id: req.body.songID } } },
           (e) => {
             if (e) console.log(e);
 
             res.json({ message: "Success", code: 200 });
           }
         );
-      });
-    });
-  });
-
-  app.post("/playlists/delete-from", (req, res) => {
-    Playlists.updateOne({ _id: req.body.id }, { $pull: { songs: { id: req.body.songID } } }, (e) => {
-      if (e) console.log(e);
-
-      Users.updateMany(
-        { "playlists._id": req.body.id, "playlists.type": "playlist" },
-        { $pull: { "playlists.$.songs": { id: req.body.songID } } },
-        (e) => {
-          if (e) console.log(e);
-
-          res.json({ message: "Success", code: 200 });
-        }
-      );
-    });
+      }
+    );
   });
 
   app.post("/playlists/create", (req, res) => {
@@ -95,16 +121,20 @@ module.exports = (app) => {
       (e, playlist) => {
         if (e) console.log(e);
 
-        Users.updateOne({ _id: req.body.authorID }, { $push: { playlists: { ...playlist } } }, (e, user) => {
-          if (e) console.log(e);
+        Users.updateOne(
+          { _id: req.body.authorID },
+          { $push: { playlists: { ...playlist } } },
+          (e, user) => {
+            if (e) console.log(e);
 
-          if (req.body.isFromAdmin) {
-            res.json({ message: "Success", code: 200 });
-            return;
+            if (req.body.isFromAdmin) {
+              res.json({ message: "Success", code: 200 });
+              return;
+            }
+
+            res.json(playlist);
           }
-
-          res.json(playlist);
-        });
+        );
       }
     );
   });

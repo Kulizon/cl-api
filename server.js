@@ -9,7 +9,7 @@ const app = express();
 mongoose.Promise = global.Promise;
 
 // mongoose.connect("mongodb://localhost:27017/clotify");
-mongoose.connect(`mongodb+srv://${process.env.DB_PASSWORD}:admin@clotify.netpw.mongodb.net/clotify?retryWrites=true&w=majority`);
+mongoose.connect(`mongodb+srv://new-admin:${process.env.DB_PASSWORD}@clotify.netpw.mongodb.net/clotify?retryWrites=true&w=majority`);
 
 app.use(cors());
 app.use(
